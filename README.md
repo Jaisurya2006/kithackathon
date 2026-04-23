@@ -338,6 +338,137 @@ git push -u origin main
 | ML Engineer | Team Member 5 |
 | Project Manager | Team Member 6 |
 
+
+---
+
+## 🏗️ System Architecture
+
+```
+╔══════════════════════════════════════════════════════════════════════╗
+║                           USER LAYER                                 ║
+║                                                                      ║
+║              Browser (Desktop / Mobile / Tablet)                     ║
+║              Roles: Donor  |  NGO  |  Admin                          ║
+╚══════════════════════════════╤═══════════════════════════════════════╝
+                               │
+                               ▼
+╔══════════════════════════════════════════════════════════════════════╗
+║                        FRONTEND LAYER                                ║
+║                   React 18 + Vite  (localhost:5173)                  ║
+║                                                                      ║
+║   ┌─────────────────────────────────────────────────────────────┐   ║
+║   │                          Pages                              │   ║
+║   │                                                             │   ║
+║   │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │   ║
+║   │  │ LandingPage │  │  LoginPage  │  │ RegisterPage│        │   ║
+║   │  │ Hero+Stats  │  │ Quick-login │  │Role Selector│        │   ║
+║   │  └─────────────┘  └─────────────┘  └─────────────┘        │   ║
+║   │                                                             │   ║
+║   │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │   ║
+║   │  │   Donor     │  │    NGO      │  │   Admin     │        │   ║
+║   │  │  Dashboard  │  │  Dashboard  │  │  Dashboard  │        │   ║
+║   │  │ Post+Track  │  │ AI-Score+   │  │ Analytics+  │        │   ║
+║   │  │  Donations  │  │ Accept/Done │  │ User Mgmt   │        │   ║
+║   │  └─────────────┘  └─────────────┘  └─────────────┘        │   ║
+║   │                                                             │   ║
+║   │  ┌─────────────┐  ┌─────────────┐                         │   ║
+║   │  │   MapPage   │  │ Leaderboard │                         │   ║
+║   │  │  Leaflet +  │  │ Gold/Silver/│                         │   ║
+║   │  │ OSM Markers │  │ Bronze Rank │                         │   ║
+║   │  └─────────────┘  └─────────────┘                         │   ║
+║   └─────────────────────────────────────────────────────────────┘   ║
+║                                                                      ║
+║   ┌─────────────────────────────────────────────────────────────┐   ║
+║   │                    Shared Components                        │   ║
+║   │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  │   ║
+║   │  │  Navbar  │  │Donation  │  │ StatCard │  │  Toast   │  │   ║
+║   │  │ + Mobile │  │  Card    │  │ +Animate │  │+ Spinner │  │   ║
+║   │  └──────────┘  └──────────┘  └──────────┘  └──────────┘  │   ║
+║   └─────────────────────────────────────────────────────────────┘   ║
+║                                                                      ║
+║   ┌─────────────────────────────────────────────────────────────┐   ║
+║   │           AuthContext  +  api.js (Axios)                    │   ║
+║   │  JWT in localStorage → Bearer token on all requests         │   ║
+║   └─────────────────────────────────────────────────────────────┘   ║
+╚══════════════════════════════╤═══════════════════════════════════════╝
+                               │
+                               │  HTTP REST (Axios)
+                               │  POST /api/auth/login
+                               │  POST /api/donations
+                               │  GET  /api/donations
+                               │  PUT  /api/donations/:id/accept
+                               │  GET  /api/users  |  GET /api/ngos
+                               ▼
+╔══════════════════════════════════════════════════════════════════════╗
+║                        BACKEND LAYER                                 ║
+║                  Node.js + Express  (localhost:5000)                 ║
+║                                                                      ║
+║   ┌──────────────────────────────────────────────────────────┐      ║
+║   │                     Routes + Controllers                 │      ║
+║   │                                                          │      ║
+║   │  /api/auth      → authController                        │      ║
+║   │                   • POST /register  (hash pw + JWT)      │      ║
+║   │                   • POST /login     (verify + JWT)       │      ║
+║   │                                                          │      ║
+║   │  /api/donations → donationController                     │      ║
+║   │                   • POST   /          (Donor only)       │      ║
+║   │                   • GET    /          (all + filters)    │      ║
+║   │                   • GET    /my        (Donor's own)      │      ║
+║   │                   • PUT    /:id/accept   (NGO only)      │      ║
+║   │                   • PUT    /:id/complete (NGO only)      │      ║
+║   │                   • GET    /analytics   (Admin only)     │      ║
+║   │                                                          │      ║
+║   │  /api/users     → userController                         │      ║
+║   │                   • GET/PUT /me  |  GET / (Admin)        │      ║
+║   │                                                          │      ║
+║   │  /api/ngos      → ngoController                          │      ║
+║   │                   • GET /  (list all NGOs)               │      ║
+║   └──────────────────────────────────────────────────────────┘      ║
+║                                                                      ║
+║   ┌──────────────────────────────────────────────────────────┐      ║
+║   │              Auth Middleware  (middleware/auth.js)       │      ║
+║   │  protect()   → Verify JWT → Attach user to req          │      ║
+║   │  adminOnly() → role === 'admin'                         │      ║
+║   │  ngoOnly()   → role === 'ngo'                           │      ║
+║   └──────────────────────────────────────────────────────────┘      ║
+║                                                                      ║
+║   ┌──────────────────────────────────────────────────────────┐      ║
+║   │              AI Matching Engine                          │      ║
+║   │  Haversine Distance → great-circle km between points    │      ║
+║   │  Score = (1 / distance) × log(hoursRemaining + 1)       │      ║
+║   │  Result → Donations sorted by AI score for NGO          │      ║
+║   └──────────────────────────────────────────────────────────┘      ║
+╚══════════════════════════════╤═══════════════════════════════════════╝
+                               │
+                               │  Mongoose ODM
+                               │  mongodb://...@cluster0.mongodb.net
+                               ▼
+╔══════════════════════════════════════════════════════════════════════╗
+║                        DATABASE LAYER                                ║
+║                   MongoDB Atlas  (Cloud — Free Tier)                 ║
+║                   DB: leftovers-to-life                              ║
+║                                                                      ║
+║   ┌─────────────────────┐   ┌─────────────────────┐                 ║
+║   │   User Collection   │   │ Donation Collection  │                 ║
+║   │ • name              │   │ • donor (ref: User)  │                 ║
+║   │ • email (unique)    │   │ • acceptedBy (ref)   │                 ║
+║   │ • password (hashed) │   │ • foodType (enum)    │                 ║
+║   │ • role (enum)       │   │ • quantity           │                 ║
+║   │ • organization      │   │ • address            │                 ║
+║   │ • location {lat,lng}│   │ • location {lat,lng} │                 ║
+║   │ • points            │   │ • status (enum)      │                 ║
+║   │ • donationsCount    │   │ • expiresAt          │                 ║
+║   └─────────────────────┘   └─────────────────────┘                 ║
+║                                                                      ║
+║   ┌─────────────────────┐                                            ║
+║   │   NGO Collection    │                                            ║
+║   │ • name              │                                            ║
+║   │ • location {lat,lng}│                                            ║
+║   │ • contact           │                                            ║
+║   └─────────────────────┘                                            ║
+╚══════════════════════════════════════════════════════════════════════╝
+```
+
 ---
 
 ## 📄 License
