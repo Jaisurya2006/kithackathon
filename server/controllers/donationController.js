@@ -117,26 +117,76 @@ const completeDonation = async (req, res) => {
 // @route   GET /api/donations/analytics
 const getAnalytics = async (req, res) => {
   try {
-    const total = await Donation.countDocuments();
+    const total     = await Donation.countDocuments();
     const available = await Donation.countDocuments({ status: 'available' });
-    const accepted = await Donation.countDocuments({ status: 'accepted' });
+    const accepted  = await Donation.countDocuments({ status: 'accepted' });
     const completed = await Donation.countDocuments({ status: 'completed' });
-    const organic = await Donation.countDocuments({ isOrganic: true });
+    const organic   = await Donation.countDocuments({ isOrganic: true });
+    const scheduled = await Donation.countDocuments({ status: 'scheduled' });
     const totalDonors = await User.countDocuments({ role: 'donor' });
-    const totalNGOs = await User.countDocuments({ role: 'ngo' });
+    const totalNGOs   = await User.countDocuments({ role: 'ngo' });
 
     res.json({
-      total,
-      available,
-      accepted,
-      completed,
-      organic,
-      totalDonors,
-      totalNGOs,
-      wasteReducedKg: completed * 5, // estimate: 5 kg per donation
+      total, available, accepted, completed, organic, scheduled,
+      totalDonors, totalNGOs,
+      wasteReducedKg: completed * 5,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Schedule donation for tomorrow (Step 5-6)
+// @route   PUT /api/donations/:id/schedule
+const scheduleDonation = async (req, res) => {
+  try {
+    const donation = await Donation.findById(req.params.id);
+    if (!donation) return res.status(404).json({ message: 'Donation not found' });
+    if (donation.donor.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(8, 0, 0, 0); // retry at 8 AM tomorrow
+
+    // Extend expiry to tomorrow evening
+    const tomorrowEvening = new Date(tomorrow);
+    tomorrowEvening.setHours(20, 0, 0, 0);
+
+    donation.status      = 'scheduled';
+    donation.scheduledFor = tomorrow;
+    donation.expiresAt   = tomorrowEvening;
+    await donation.save();
+
+    res.json({
+      message: 'Donation scheduled for tomorrow at 8:00 AM',
+      scheduledFor: tomorrow,
+      donation,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Re-activate scheduled donations (called by cron)
+const retryScheduledDonations = async () => {
+  try {
+    const now  = new Date();
+    const due  = await Donation.find({
+      status: 'scheduled',
+      scheduledFor: { $lte: now },
+    });
+
+    for (const d of due) {
+      d.status = 'available';
+      await d.save();
+      console.log(`[CRON] Re-activated scheduled donation: ${d._id}`);
+    }
+
+    if (due.length > 0) console.log(`[CRON] ${due.length} scheduled donation(s) made available.`);
+  } catch (err) {
+    console.error('[CRON] Error retrying scheduled donations:', err.message);
   }
 };
 
@@ -148,4 +198,6 @@ module.exports = {
   rejectDonation,
   completeDonation,
   getAnalytics,
+  scheduleDonation,
+  retryScheduledDonations,
 };

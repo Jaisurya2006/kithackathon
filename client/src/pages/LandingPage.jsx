@@ -84,7 +84,7 @@ export default function LandingPage() {
           }}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} className="animate-glow" />
             <span style={{ fontSize: '0.82rem', color: '#4ade80', fontWeight: 600 }}>
-              🇮🇳 Smart India Hackathon 2025 — Team INFINITE
+              Team Neural Ninjas
             </span>
           </div>
 
@@ -272,7 +272,7 @@ export default function LandingPage() {
           <span style={{ fontSize: '1.2rem' }}>🌱</span>
           <span style={{ fontWeight: 700, color: '#94a3b8' }}>Leftovers to Life</span>
           <span>•</span>
-          <span>Team INFINITE — SIH 2025</span>
+          <span>Team Neural Ninjas</span>
         </div>
         <p>Built with ❤️ to fight food waste and hunger | MIT License</p>
       </footer>

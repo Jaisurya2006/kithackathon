@@ -1,12 +1,13 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
+const cors    = require('cors');
 const connectDB = require('./config/db');
+const { retryScheduledDonations } = require('./controllers/donationController');
 
-const authRoutes = require('./routes/auth');
+const authRoutes     = require('./routes/auth');
 const donationRoutes = require('./routes/donations');
-const userRoutes = require('./routes/users');
-const ngoRoutes = require('./routes/ngos');
+const userRoutes     = require('./routes/users');
+const ngoRoutes      = require('./routes/ngos');
 
 const app = express();
 
@@ -19,10 +20,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth',      authRoutes);
 app.use('/api/donations', donationRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/ngos', ngoRoutes);
+app.use('/api/users',     userRoutes);
+app.use('/api/ngos',      ngoRoutes);
 
 // Health check
 app.get('/', (req, res) => {
@@ -43,4 +44,9 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+
+  // ── Cron: re-activate scheduled donations every hour (Step 6) ──
+  retryScheduledDonations(); // run once on startup
+  setInterval(retryScheduledDonations, 60 * 60 * 1000); // then every 60 min
+  console.log('⏰ Scheduled donation retry cron started (every 60 min)');
 });

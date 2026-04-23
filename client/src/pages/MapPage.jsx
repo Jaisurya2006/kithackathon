@@ -46,6 +46,15 @@ function FitBounds({ coords }) {
   return null;
 }
 
+/* Fly to user location */
+function FlyToUser({ pos, trigger }) {
+  const map = useMap();
+  useEffect(() => {
+    if (trigger) map.flyTo(pos, 15, { duration: 1.5 });
+  }, [trigger, pos, map]);
+  return null;
+}
+
 const STATUS_COLORS = {
   available: '#22c55e', accepted: '#3b82f6',
   completed: '#10b981', expired: '#6b7280', rejected: '#ef4444'
@@ -55,16 +64,43 @@ export default function MapPage() {
   const [donations, setDonations] = useState([]);
   const [filter, setFilter]       = useState('all');
   const [loading, setLoading]     = useState(true);
-  const [userLoc, setUserLoc]     = useState([28.6139, 77.209]); // New Delhi default
+  const [userLoc, setUserLoc]     = useState([28.6139, 77.209]);
+  const [locating, setLocating]   = useState(false);
+  const [flyTrigger, setFlyTrigger] = useState(0);
   const [toast, setToast]         = useState(null);
 
+  const goToMyLocation = () => {
+    if (!navigator.geolocation) {
+      setToast({ message: 'Geolocation not supported by your browser', type: 'error' }); return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const newPos = [pos.coords.latitude, pos.coords.longitude];
+        setUserLoc(newPos);
+        setFlyTrigger(t => t + 1);
+        setLocating(false);
+        setToast({ message: '📍 Centered on your location!', type: 'success' });
+      },
+      () => {
+        setLocating(false);
+        setToast({ message: 'Could not get your location. Please allow location access.', type: 'error' });
+      },
+      { timeout: 8000, enableHighAccuracy: true }
+    );
+  };
+
   useEffect(() => {
-    /* Get user location */
+    /* Get user location on mount */
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => setUserLoc([pos.coords.latitude, pos.coords.longitude]),
+        (pos) => {
+          const p = [pos.coords.latitude, pos.coords.longitude];
+          setUserLoc(p);
+          setFlyTrigger(1);
+        },
         () => {},
-        { timeout: 5000 }
+        { timeout: 8000, enableHighAccuracy: true }
       );
     }
 
@@ -93,13 +129,23 @@ export default function MapPage() {
   return (
     <div style={{ padding: '24px', maxWidth: 1200, margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 6 }}>
-          🗺️ Live <span className="gradient-text">Donation Map</span>
-        </h1>
-        <p style={{ color: '#64748b', fontSize: '0.875rem' }}>
-          Real-time view of food donations across the city
-        </p>
+      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: 6 }}>
+            🗺️ Live <span className="gradient-text">Donation Map</span>
+          </h1>
+          <p style={{ color: '#64748b', fontSize: '0.875rem' }}>
+            Real-time view of food donations across the city
+          </p>
+        </div>
+        <button onClick={goToMyLocation} disabled={locating} style={{
+          padding: '10px 20px', borderRadius: 10, border: '1.5px solid #f97316',
+          background: locating ? 'rgba(249,115,22,0.1)' : 'rgba(249,115,22,0.15)',
+          color: '#f97316', fontWeight: 700, fontSize: '0.875rem', cursor: locating ? 'wait' : 'pointer',
+          display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s'
+        }}>
+          {locating ? '⏳ Locating…' : '📍 My Location'}
+        </button>
       </div>
 
       {/* Filter buttons */}
@@ -141,24 +187,34 @@ export default function MapPage() {
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
           </div>
         ) : (
-          <MapContainer center={userLoc} zoom={11} style={{ height: '100%', width: '100%' }}>
+          <MapContainer center={userLoc} zoom={13} style={{ height: '100%', width: '100%' }}>
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             />
 
+            <FlyToUser pos={userLoc} trigger={flyTrigger} />
             {coords.length > 0 && <FitBounds coords={coords} />}
 
-            {/* User location */}
-            <Marker position={userLoc} icon={makeIcon('#f97316', '📍')}>
+            {/* User location — pulsing marker */}
+            <Marker position={userLoc} icon={L.divIcon({
+              className: '',
+              html: `<div style="position:relative;width:20px;height:20px">
+                <div style="position:absolute;inset:0;border-radius:50%;background:#f97316;opacity:0.3;animation:pulse 1.5s ease-out infinite"></div>
+                <div style="position:absolute;inset:4px;border-radius:50%;background:#f97316;border:2px solid white"></div>
+                <style>@keyframes pulse{0%{transform:scale(1);opacity:0.3}100%{transform:scale(2.5);opacity:0}}</style>
+              </div>`,
+              iconSize: [20, 20], iconAnchor: [10, 10], popupAnchor: [0, -14]
+            })}>
               <Popup>
                 <div style={{ fontFamily: 'Inter,sans-serif', fontWeight: 600, padding: 4 }}>
-                  📍 Your Location
+                  📍 <strong>Your Current Location</strong><br/>
+                  <span style={{fontSize:'0.75rem',color:'#666'}}>{userLoc[0].toFixed(5)}, {userLoc[1].toFixed(5)}</span>
                 </div>
               </Popup>
             </Marker>
-            <Circle center={userLoc} radius={20000}
-              pathOptions={{ color: '#f97316', fillColor: '#f97316', fillOpacity: 0.04, weight: 1, dashArray: '6 4' }} />
+            <Circle center={userLoc} radius={5000}
+              pathOptions={{ color: '#f97316', fillColor: '#f97316', fillOpacity: 0.05, weight: 1.5, dashArray: '6 4' }} />
 
             {/* Donation markers */}
             {filtered.map(d => {

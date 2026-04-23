@@ -39,8 +39,12 @@ const DonationSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['available', 'accepted', 'completed', 'expired', 'rejected'],
+      enum: ['available', 'accepted', 'completed', 'expired', 'rejected', 'scheduled'],
       default: 'available',
+    },
+    scheduledFor: {
+      type: Date,
+      default: null, // set when donor schedules for tomorrow
     },
     isOrganic: {
       type: Boolean,
