@@ -6,6 +6,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Team](https://img.shields.io/badge/Team-Neural%20Ninjas-purple.svg)](#)
 [![UN SDG](https://img.shields.io/badge/UN%20SDG-Zero%20Hunger-blue.svg)](https://sdgs.un.org/goals/goal2)
+[![GitHub](https://img.shields.io/badge/GitHub-Jaisurya2006%2Fkithackathon-black?logo=github)](https://github.com/Jaisurya2006/kithackathon)
+[![Local Dev](https://img.shields.io/badge/Local%20Dev-localhost%3A5173-orange)](http://localhost:5173)
 
 ---
 
