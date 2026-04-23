@@ -9,7 +9,72 @@
 
 ---
 
+## 🔄 System Flowchart
+
+![Leftovers to Life — System Flowchart](./flowchart.png)
+
+```
+START
+  │
+  ▼
+User (Donor) logs in / signs up
+  │
+  ▼
+Uploads surplus food details
+(type, quantity, location, time)
+  │
+  ▼
+Frontend sends request → Backend API
+  │
+  ▼
+Backend validates & stores data (MongoDB)
+  │
+  ▼
+Call AI/ML Service
+(Haversine Distance + Priority Score)
+  │
+  ▼
+Find nearby NGOs (5–20 km radius)
+  │
+  ▼
+Send real-time notifications
+  │
+  ▼
+NGO receives request
+  │
+  ▼
+[Decision] NGO accepts?
+ ├── No  → Notify next NGO ──────────┐
+ └── Yes                             │
+        │         ◄──────────────────┘
+        ▼
+Route optimization (Maps API)
+        │
+        ▼
+Pickup scheduled
+        │
+        ▼
+Food collected & delivered
+        │
+        ▼
+Check for organic waste
+ ├── Yes → Send waste → Agricultural Trust → Compost production
+ └── No
+        │
+        ▼
+Update database & analytics
+        │
+        ▼
+Display impact (food saved, waste reduced)
+        │
+        ▼
+END
+```
+
+---
+
 ## 🌍 What is Leftovers to Life?
+
 
 **Leftovers to Life** is a smart, real-world food redistribution platform that:
 
